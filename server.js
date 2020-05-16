@@ -4,7 +4,7 @@ const morgan = require("morgan");
 const POKEDEX = require("./data/pokedex.json");
 
 const app = express();
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 
 const validTypes = [
   `Bug`,
@@ -27,16 +27,26 @@ const validTypes = [
   `Water`,
 ];
 
-app.use(morgan("dev"));
+const morganSetting = (process.env.NODE_ENV = "production" ? "tiny" : "common");
+app.use(morgan(morganSetting));
 
 app.use(function validateBearerToken(req, res, next) {
   const authToken = req.get("Authorization");
   const apiToken = process.env.API_TOKEN;
-  console.log("validate bearer token middleware");
   if (!authToken || authToken.split(" ")[1] !== apiToken) {
     return res.status(401).json({ error: "Unauthorized request" });
   }
   next();
+});
+
+app.use((error, req, res, next) => {
+  let response;
+  if (process.env.NODE_ENV === "production") {
+    response = { error: { message: "server error" } };
+  } else {
+    response = { error };
+  }
+  res.status(500).json(response);
 });
 
 app.get("/", (req, res) => {
@@ -66,6 +76,4 @@ function handleGetPokemon(req, res) {
 
 app.get("/pokemon", handleGetPokemon);
 
-app.listen(PORT, () => {
-  console.log(`Server is listening at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => {});
